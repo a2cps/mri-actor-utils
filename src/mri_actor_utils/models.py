@@ -10,11 +10,12 @@ from pathlib import Path
 
 import ibis
 import pandas as pd
+import pydantic
 from ibis.expr.types.relations import Table
 from tapipy import errors, util, actors
 from tapipy.tapis import Tapis, TapisResult
 
-from mri_actor_utils import jobs, apps
+from mri_actor_utils import jobs
 
 
 @dataclasses.dataclass
@@ -33,8 +34,7 @@ class Context(util.AttrDict):
     message_dict: dict[str, typing.Any]
 
 
-@dataclasses.dataclass
-class Reactor:
+class Reactor(pydantic.BaseModel):
     job_name: str
     ILOG: Path
     JOB: Path
@@ -87,16 +87,6 @@ class Reactor:
             )
         return tp
 
-    @functools.cached_property
-    def app(self) -> apps.TapisApp:
-        _app = self.client.apps.getApp(  # type: ignore
-            appId=self.job.appId, appVersion=self.job.appVersion
-        )
-        if not isinstance(_app, apps.TapisApp):
-            msg = "Unable to get app from client and job"
-            raise AssertionError(msg)
-        return _app
-
     @property
     def failurebot_url(self) -> str:
         token: TapisResult = self.client.sk.readSecret(  # type: ignore
@@ -134,9 +124,12 @@ class Reactor:
 
     @property
     def container_image(self) -> str:
-        image = self.app.containerImage
+        app: TapisResult = self.client.apps.getApp(  # type: ignore
+            appId=self.job.appId, appVersion=self.job.appVersion
+        )
+        image = app.get("containerImage")
         if image is None:
-            msg = "Did not find image for app"
+            msg = f"Did not find image for app: {app}"
             raise AssertionError(msg)
         return image
 
@@ -165,7 +158,7 @@ class Reactor:
         elif any(key == var.key for var in env_variables):
             for var in env_variables:
                 if key == var.key:
-                    var.key = value
+                    var.value = value
         else:
             env_variables.append(new_variable)
 

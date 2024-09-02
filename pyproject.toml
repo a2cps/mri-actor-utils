@@ -22,6 +22,7 @@ dependencies = [
   "tapipy==1.6.3",
   "ibis-framework[duckdb]==9.3.0",
   "pandas==2.2.2",
+  "pydantic==2.8.2",
 ]
 
 
@@ -35,3 +36,8 @@ installer = "uv"
 extra-dependencies = ["mypy>=1.0.0"]
 [tool.hatch.envs.types.scripts]
 check = "mypy --install-types --non-interactive {args:src/mri_actor_utils tests}"
+
+[tool.uv]
+dev-dependencies = [
+    "datamodel-code-generator[http]>=0.25.9",
+]

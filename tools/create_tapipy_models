@@ -9,14 +9,16 @@ datamodel-codegen \
     --target-python-version 3.12 \
     --use-schema-description
 
-# for this one, need to adjust a few min_item -> min_length
-datamodel-codegen \
-    --url https://github.com/tapis-project/tapipy/raw/main/tapipy/resources/openapi_v3-apps.yml \
-    --output src/mri_actor_utils/apps.py \
-    --enum-field-as-literal all \
-    --use-standard-collections \
-    --use-union-operator \
-    --target-python-version 3.12 \
-    --use-schema-description \
-    --field-constraints
+# # for this one, need to adjust a few min_item -> min_length
+# # also need to delete ListTypeEnum
+# datamodel-codegen \
+#     --url https://github.com/tapis-project/tapipy/raw/main/tapipy/resources/openapi_v3-apps.yml \
+#     --output src/mri_actor_utils/apps.py \
+#     --enum-field-as-literal all \
+#     --use-standard-collections \
+#     --use-union-operator \
+#     --target-python-version 3.12 \
+#     --use-schema-description \
+#     --field-constraints \
+#     --collapse-root-models
 
