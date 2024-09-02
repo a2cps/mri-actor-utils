@@ -61,6 +61,7 @@ class Reactor(pydantic.BaseModel):
                 io.BytesIO(ilog),
                 na_values=["na", ""],
                 dtype={"subject_id": str},
+                parse_dates=["acquisition_week"],
             )
         )
 
