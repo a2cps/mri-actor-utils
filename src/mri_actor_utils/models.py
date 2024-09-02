@@ -2,6 +2,7 @@ import abc
 import dataclasses
 import functools
 import io
+import json
 import math
 import os
 import typing
@@ -12,6 +13,8 @@ import pandas as pd
 from ibis.expr.types.relations import Table
 from tapipy import errors, util, actors
 from tapipy.tapis import Tapis, TapisResult
+
+from mri_actor_utils import jobs, apps
 
 
 @dataclasses.dataclass
@@ -40,6 +43,8 @@ class Reactor:
     MAXJOBS: int
     FAILUREBOT_ADDRESS_SECRET_KEY: str
     FAILUREBOT_ADDRESS_SECRET_NAME: str
+
+    _job: jobs.ReqSubmitJob | None = None
 
     @functools.cached_property
     def context(self) -> Context:
@@ -82,6 +87,16 @@ class Reactor:
             )
         return tp
 
+    @functools.cached_property
+    def app(self) -> apps.TapisApp:
+        _app = self.client.apps.getApp(  # type: ignore
+            appId=self.job.appId, appVersion=self.job.appVersion
+        )
+        if not isinstance(_app, apps.TapisApp):
+            msg = "Unable to get app from client and job"
+            raise AssertionError(msg)
+        return _app
+
     @property
     def failurebot_url(self) -> str:
         token: TapisResult = self.client.sk.readSecret(  # type: ignore
@@ -100,6 +115,79 @@ class Reactor:
             raise AssertionError(msg)
 
         return url
+
+    @property
+    def job(self) -> jobs.ReqSubmitJob:
+        if self._job is None:
+            with open(self.JOB) as f:
+                self._job = jobs.ReqSubmitJob(**json.load(f))
+        assert isinstance(self._job, jobs.ReqSubmitJob)
+        return self._job
+
+    @property
+    def parameter_set(self) -> jobs.JobParameterSet:
+        if self.job.parameterSet is None:
+            parameter_set = jobs.JobParameterSet()
+        else:
+            parameter_set = self.job.parameterSet
+        return parameter_set
+
+    @property
+    def container_image(self) -> str:
+        image = self.app.containerImage
+        if image is None:
+            msg = "Did not find image for app"
+            raise AssertionError(msg)
+        return image
+
+    def set_cmd_prefix(self, image: str, n_jobs: int) -> None:
+        self.job.cmdPrefix = (
+            f"ibrun -n 1 apptainer run {image} --help && ibrun -n {n_jobs}"
+        )
+
+    def set_app_arg(self, name: str, value: str) -> None:
+        app_args = self.parameter_set.appArgs
+        new_arg = jobs.JobArgSpec(name=name, arg=value)
+        if app_args is None:
+            app_args = [new_arg]
+        elif any(name == arg.name for arg in app_args):
+            for arg in app_args:
+                if name == arg.name:
+                    arg.arg = value
+        else:
+            app_args.append(new_arg)
+
+    def set_env_var(self, key: str, value: str) -> None:
+        env_variables = self.parameter_set.envVariables
+        new_variable = jobs.KeyValuePair(key=key, value=value)
+        if env_variables is None:
+            env_variables = [new_variable]
+        elif any(key == var.key for var in env_variables):
+            for var in env_variables:
+                if key == var.key:
+                    var.key = value
+        else:
+            env_variables.append(new_variable)
+
+    def set_subscription_url(self, url: str) -> None:
+        if self.job.subscriptions is None:
+            self.job.subscriptions = [
+                jobs.ReqSubscribe(
+                    enabled=True,
+                    deliveryTargets=[
+                        jobs.NotifDeliveryTarget(
+                            deliveryMethod="WEBHOOK", deliveryAddress=url
+                        )
+                    ],
+                )
+            ]
+        else:
+            target = self.job.subscriptions[0]
+            target.deliveryTargets = [
+                jobs.NotifDeliveryTarget(
+                    deliveryMethod="WEBHOOK", deliveryAddress=url
+                )
+            ]
 
     def get_node_count(self, n_jobs: int) -> int:
         return math.ceil(n_jobs / self.N_SUBS_PER_NODE)

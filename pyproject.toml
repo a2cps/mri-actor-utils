@@ -3,13 +3,13 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "mri-utils"
+name = "mri-actor-utils"
 dynamic = ["version"]
 description = ''
 readme = "README.md"
 requires-python = ">=3.11"
 keywords = []
-authors = [{ name = "Patrick Sadil", email = "psadil@gmail.com" }]
+authors = [{ name = "Patrick Sadil", email = "psadil1@jh.edu" }]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Programming Language :: Python",
@@ -26,7 +26,7 @@ dependencies = [
 
 
 [tool.hatch.version]
-path = "src/mri_utils/__about__.py"
+path = "src/mri_actor_utils/__about__.py"
 
 [tool.hatch.envs.default]
 installer = "uv"
@@ -34,4 +34,4 @@ installer = "uv"
 [tool.hatch.envs.types]
 extra-dependencies = ["mypy>=1.0.0"]
 [tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive {args:src/mri_utils tests}"
+check = "mypy --install-types --non-interactive {args:src/mri_actor_utils tests}"
