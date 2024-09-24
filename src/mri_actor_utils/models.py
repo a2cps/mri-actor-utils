@@ -8,10 +8,8 @@ import os
 import typing
 from pathlib import Path
 
-import ibis
-import pandas as pd
+import polars as pl
 import pydantic
-from ibis.expr.types.relations import Table
 from tapipy import errors, util, actors
 from tapipy.tapis import Tapis, TapisResult
 
@@ -51,18 +49,15 @@ class Reactor(pydantic.BaseModel):
         return actors.get_context()  # type: ignore
 
     @functools.cached_property
-    def ilog(self) -> Table:
+    def ilog(self) -> pl.DataFrame:
         ilog: bytes = self.client.files.getContents(  # type: ignore
             systemId="secure.corral",
             path=self.context.message_dict.get("ILOG", str(self.ILOG)),
         )
-        return ibis.memtable(
-            pd.read_csv(
-                io.BytesIO(ilog),
-                na_values=["na", ""],
-                dtype={"subject_id": str},
-                parse_dates=["acquisition_week"],
-            )
+        return pl.read_csv(
+            io.BytesIO(ilog),
+            null_values=["na", ""],
+            schema_overrides={"subject_id": pl.Utf8},
         )
 
     @functools.cached_property
