@@ -51,7 +51,7 @@ class Reactor(pydantic.BaseModel):
     @functools.cached_property
     def ilog(self) -> pl.DataFrame:
         ilog: bytes = self.client.files.getContents(  # type: ignore
-            systemId="secure.corral",
+            systemId="secure.ls6",
             path=self.context.message_dict.get("ILOG", str(self.ILOG)),
         )
         return pl.read_csv(
