@@ -130,9 +130,8 @@ class Reactor(pydantic.BaseModel):
         return image
 
     def set_cmd_prefix(self, image: str, n_jobs: int) -> None:
-        self.job.cmdPrefix = (
-            f"ibrun -n 1 apptainer run {image} --help && ibrun -n {n_jobs}"
-        )
+        parent = Path(image).parent
+        self.job.cmdPrefix = f"mkdir -p {parent} && ibrun -n 1 apptainer pull {image} docker://{image} --help && ibrun -n {n_jobs}"
 
     def set_app_arg(self, name: str, value: str) -> None:
         app_args = self.parameter_set.appArgs
