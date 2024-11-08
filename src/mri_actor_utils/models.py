@@ -13,7 +13,7 @@ import pydantic
 from tapipy import errors, util, actors
 from tapipy.tapis import Tapis, TapisResult
 
-from mri_actor_utils import jobs
+from mri_actor_utils import jobs, config
 
 
 @dataclasses.dataclass
@@ -34,13 +34,13 @@ class Context(util.AttrDict):
 
 class Reactor(pydantic.BaseModel):
     job_name: str
-    ILOG: Path
     JOB: Path
     N_SUBS_PER_NODE: int
     N_SEC_TO_COPY_ONE_SUB: int
     MAXJOBS: int
-    FAILUREBOT_ADDRESS_SECRET_KEY: str
-    FAILUREBOT_ADDRESS_SECRET_NAME: str
+    ILOG: Path = config.ILOG
+    FAILUREBOT_ADDRESS_SECRET_KEY: str = config.FAILUREBOT_ADDRESS_SECRET_KEY
+    FAILUREBOT_ADDRESS_SECRET_NAME: str = config.FAILUREBOT_ADDRESS_SECRET_KEY
 
     _job: jobs.ReqSubmitJob | None = None
 
@@ -130,8 +130,9 @@ class Reactor(pydantic.BaseModel):
         return image
 
     def set_cmd_prefix(self, image: str, n_jobs: int) -> None:
-        parent = Path(image).parent
-        self.job.cmdPrefix = f"mkdir -p {parent} && ibrun -n 1 apptainer pull {image} docker://{image} --help && ibrun -n {n_jobs}"
+        self.job.cmdPrefix = (
+            f"ibrun -n 1 apptainer run {image} --help && ibrun -n {n_jobs}"
+        )
 
     def set_app_arg(self, name: str, value: str) -> None:
         app_args = self.parameter_set.appArgs
