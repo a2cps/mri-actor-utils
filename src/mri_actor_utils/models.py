@@ -40,7 +40,7 @@ class Reactor(pydantic.BaseModel):
     MAXJOBS: int
     ILOG: Path = config.ILOG
     FAILUREBOT_ADDRESS_SECRET_KEY: str = config.FAILUREBOT_ADDRESS_SECRET_KEY
-    FAILUREBOT_ADDRESS_SECRET_NAME: str = config.FAILUREBOT_ADDRESS_SECRET_KEY
+    FAILUREBOT_ADDRESS_SECRET_NAME: str = config.FAILUREBOT_ADDRESS_SECRET_NAME
 
     _job: jobs.ReqSubmitJob | None = None
 
