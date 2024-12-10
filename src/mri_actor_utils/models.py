@@ -39,6 +39,7 @@ class Reactor(pydantic.BaseModel):
     N_SEC_TO_COPY_ONE_SUB: int
     MAXJOBS: int
     ILOG: Path = config.ILOG
+    N_SUBMISSIONS: int = 1
     FAILUREBOT_ADDRESS_SECRET_KEY: str = config.FAILUREBOT_ADDRESS_SECRET_KEY
     FAILUREBOT_ADDRESS_SECRET_NAME: str = config.FAILUREBOT_ADDRESS_SECRET_NAME
 
@@ -129,6 +130,20 @@ class Reactor(pydantic.BaseModel):
             raise AssertionError(msg)
         return image
 
+    @property
+    def maxjobs(self) -> int:
+        maxjobs = self.context.message_dict.get("MAXJOBS", self.MAXJOBS)
+        assert isinstance(maxjobs, int)
+        return maxjobs
+
+    @property
+    def n_submissions(self) -> int:
+        n_submissions = self.context.message_dict.get(
+            "N_SUBMISSIONS", self.N_SUBMISSIONS
+        )
+        assert isinstance(n_submissions, int)
+        return n_submissions
+
     def set_cmd_prefix(self, image: str, n_jobs: int) -> None:
         self.job.cmdPrefix = (
             f"ibrun -n 1 apptainer run {image} --help && ibrun -n {n_jobs}"
@@ -182,7 +197,7 @@ class Reactor(pydantic.BaseModel):
         return math.ceil(n_jobs / self.N_SUBS_PER_NODE)
 
     @abc.abstractmethod
-    def get_runlist(self) -> list[tuple[str, str]]:
+    def get_runlist(self, n_submissions: int = 1) -> list[tuple[str, ...]]:
         pass
 
     @abc.abstractmethod
