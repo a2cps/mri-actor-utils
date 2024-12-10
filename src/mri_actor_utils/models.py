@@ -244,5 +244,5 @@ class Reactor(pydantic.BaseModel):
         pass
 
     @abc.abstractmethod
-    def parse_inputs(self) -> typing.Self:
+    def parse_and_submit(self) -> None:
         pass
