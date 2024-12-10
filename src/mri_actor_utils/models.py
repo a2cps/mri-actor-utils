@@ -2,6 +2,7 @@ import abc
 import dataclasses
 import functools
 import io
+import logging
 import json
 import math
 import os
@@ -196,10 +197,52 @@ class Reactor(pydantic.BaseModel):
     def get_node_count(self, n_jobs: int) -> int:
         return math.ceil(n_jobs / self.N_SUBS_PER_NODE)
 
+    def set_common(self, n_jobs: int) -> None:
+        self.set_env_var(
+            key="MIN_ARCHIVE_DURATION",
+            value=str(n_jobs * self.N_SEC_TO_COPY_ONE_SUB),
+        )
+        if max_minutes := self.context.message_dict.get("maxMinutes"):
+            self.job.maxMinutes = max_minutes
+
+        self.set_cmd_prefix(image=self.container_image, n_jobs=n_jobs)
+
+        n_nodes = self.get_node_count(n_jobs)
+
+        # corresponds to SBATCH option -N,--nodes, SLURM_JOB_NUM_NODES
+        self.job.nodeCount = n_nodes
+
+        # corresponds to SBATCH option -n,--ntask, SLURM_NPROCS, SLURM_NTASKS
+        # all nodes will have all cores available, but this needs to be set for ibrun
+        self.job.coresPerNode = self.N_SUBS_PER_NODE
+
+        if self.context.message_dict.get("SKIP_FAILUREBOT", False):
+            self.job.subscriptions = None
+        else:
+            self.set_subscription_url(url=self.failurebot_url)
+
+        if FAILURE_LOG_DST := self.context.message_dict.get("FAILURE_LOG_DST"):
+            self.set_env_var(key="FAILURE_LOG_DST", value=FAILURE_LOG_DST)
+
+    def submit(self) -> None:
+        print(
+            self.job.model_dump_json(
+                indent=4, exclude_unset=True, exclude_none=True
+            )
+        )
+
+        try:
+            submitted = self.client.jobs.submitJob(  # type: ignore
+                **self.job.model_dump(exclude_unset=True, exclude_none=True)
+            )
+            print(submitted.uuid)
+        except Exception:
+            logging.exception("encountered while trying to submit job")
+
     @abc.abstractmethod
-    def get_runlist(self, n_submissions: int = 1) -> list[tuple[str, ...]]:
+    def get_runlist(self) -> list[tuple[str, ...]]:
         pass
 
     @abc.abstractmethod
-    def submit(self) -> None:
+    def parse_inputs(self) -> typing.Self:
         pass
